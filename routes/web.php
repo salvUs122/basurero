@@ -39,3 +39,11 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::get('/camiones/crear', [CamionController::class, 'create'])->name('camiones.create');
     Route::post('/camiones', [CamionController::class, 'store'])->name('camiones.store');
 });
+
+use App\Http\Controllers\RutaController;
+
+Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
+    Route::get('/rutas', [RutaController::class, 'index'])->name('rutas.index');
+    Route::get('/rutas/crear', [RutaController::class, 'create'])->name('rutas.create');
+    Route::post('/rutas', [RutaController::class, 'store'])->name('rutas.store');
+});
