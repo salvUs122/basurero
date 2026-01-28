@@ -47,3 +47,13 @@ Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
     Route::get('/rutas/crear', [RutaController::class, 'create'])->name('rutas.create');
     Route::post('/rutas', [RutaController::class, 'store'])->name('rutas.store');
 });
+
+use App\Http\Controllers\AsignacionRutaCamionController;
+
+Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
+    Route::get('/camiones/{camion}/asignar-rutas', [AsignacionRutaCamionController::class, 'edit'])
+        ->name('camiones.asignar_rutas');
+
+    Route::post('/camiones/{camion}/asignar-rutas', [AsignacionRutaCamionController::class, 'update'])
+        ->name('camiones.guardar_rutas');
+});

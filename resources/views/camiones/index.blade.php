@@ -9,3 +9,4 @@
     </li>
 @endforeach
 </ul>
+<a href="{{ route('camiones.asignar_rutas', $camion) }}">Asignar rutas</a>

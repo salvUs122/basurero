@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Camion;
+
 
 class Ruta extends Model
 {
@@ -14,4 +16,12 @@ class Ruta extends Model
         'tolerancia_metros',
         'geometria_geojson',
     ];
+
+    public function camiones()
+    {
+        return $this->belongsToMany(Camion::class, 'ruta_camion')
+            ->withPivot('activa')
+            ->withTimestamps();
+    }
+
 }
