@@ -31,3 +31,11 @@ Route::middleware(['auth', 'role:encargado'])->get('/encargado', function () {
 Route::middleware(['auth', 'role:conductor'])->get('/conductor', function () {
     return 'Hola CONDUCTOR ✅';
 });
+
+use App\Http\Controllers\CamionController;
+
+Route::middleware(['auth', 'role:administrador'])->group(function () {
+    Route::get('/camiones', [CamionController::class, 'index'])->name('camiones.index');
+    Route::get('/camiones/crear', [CamionController::class, 'create'])->name('camiones.create');
+    Route::post('/camiones', [CamionController::class, 'store'])->name('camiones.store');
+});
