@@ -19,23 +19,22 @@ class RutaController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $request->validate([
-            'nombre' => 'required|max:150',
-            'estado' => 'required|in:activa,inactiva',
-            'tolerancia_metros' => 'required|integer|min:5|max:500',
-        ]);
+{
+    $request->validate([
+        'nombre' => 'required|max:150',
+        'estado' => 'required|in:activa,inactiva',
+        'tolerancia_metros' => 'required|integer|min:5|max:500',
+        'geometria_geojson' => 'required', // viene del mapa
+    ]);
 
-        // Por ahora, como todavía no dibujamos en mapa, guardamos una ruta "vacía" mínima.
-        $geojson_minimo = '{"type":"LineString","coordinates":[[-63.1800,-17.7800],[-63.1810,-17.7810]]}';
+    Ruta::create([
+        'nombre' => $request->nombre,
+        'estado' => $request->estado,
+        'tolerancia_metros' => $request->tolerancia_metros,
+        'geometria_geojson' => $request->geometria_geojson,
+    ]);
 
-        Ruta::create([
-            'nombre' => $request->nombre,
-            'estado' => $request->estado,
-            'tolerancia_metros' => $request->tolerancia_metros,
-            'geometria_geojson' => $geojson_minimo,
-        ]);
+    return redirect()->route('rutas.index')->with('success', 'Ruta creada correctamente');
+}
 
-        return redirect()->route('rutas.index')->with('success', 'Ruta creada correctamente');
-    }
 }
