@@ -99,7 +99,7 @@ Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
     
     // Historial de recorridos
     Route::get('/recorridos', [RecorridosAdminController::class, 'index'])->name('recorridos.index');
-    Route::get('/recorridos/{recorrido}', [RecorridosAdminController::class, 'show'])->name('recorridos.show');
+    Route::get('/recorridos/{recorrido}', [RecorridosAdminController::class, 'show'])->name('recorridos.show.historial');
     
     // Detalles de recorridos individuales
     Route::get('/recorridos/{recorrido}/detalle', [RecorridoController::class, 'show'])->name('recorridos.show');
@@ -112,10 +112,16 @@ Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
         return response()->json(['html' => $html]);
     })->middleware(['auth', 'role:administrador|encargado']);
 
-    // AGREGAR ESTA RUTA DENTRO DEL GRUPO DE ADMINISTRADOR
     Route::post('/camiones/{camion}/guardar-horarios-dia', [AsignacionRutaCamionController::class, 'guardarHorariosPorDia'])
         ->name('camiones.guardar_horarios_dia');
-// ============================================
+
+     //puntos GPS del recorrido
+    Route::get('/recorridos/{recorrido}/exportar/gps', [RecorridoController::class, 'exportarGPS'])->name('recorridos.exportar.gps');
+    Route::get('/recorridos/{recorrido}/exportar/kml', [RecorridoController::class, 'exportarKML'])->name('recorridos.exportar.kml');
+    Route::get('/recorridos/{recorrido}/exportar/csv', [RecorridoController::class, 'exportarCSV'])->name('recorridos.exportar.csv');
+   
+    Route::get('/recorridos/{recorrido}/exportar/csv', [RecorridoController::class, 'exportarCSV'])->name('recorridos.exportar.csv');
+    // ============================================
 // RUTAS PARA ENCARGADO
 // ============================================
 Route::middleware(['auth', 'role:encargado'])->group(function () {

@@ -1,135 +1,496 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Recorrido #{{ $recorrido->id }}
-        </h2>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div class="flex items-center gap-3">
+                <a href="{{ route('recorridos.index') }}" 
+                   class="text-gray-600 hover:text-gray-900 transition-colors">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                </a>
+                <div>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                        🗺️ Recorrido #{{ $recorrido->id }}
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-0.5">
+                        {{ $recorrido->fecha_inicio->format('d/m/Y H:i') }} - 
+                        {{ $recorrido->conductor?->name ?? 'Sin conductor' }}
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Badge de estado -->
+            @php
+                $estado = $recorrido->estado ?? 'finalizado';
+                $estados = [
+                    'activo' => ['bg-green-100', 'text-green-800', '🟢 En curso'],
+                    'finalizado' => ['bg-gray-100', 'text-gray-800', '⏹️ Finalizado'],
+                    'incidencia' => ['bg-red-100', 'text-red-800', '⚠️ Incidencia']
+                ];
+                [$bg, $text, $label] = $estados[$estado] ?? $estados['finalizado'];
+            @endphp
+            <span class="px-4 py-2 rounded-lg text-sm font-medium {{ $bg }} {{ $text }}">
+                {{ $label }}
+            </span>
+        </div>
     </x-slot>
 
     <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white p-6 shadow-sm sm:rounded-lg">
-                <div id="map" style="height: 520px; border:1px solid #ddd;"></div>
-                <p id="estado" style="margin-top:10px;color:#555;">Cargando…</p>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            <!-- Grid de 2 columnas: Mapa + Información -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Columna izquierda: Mapa (ocupa 2/3) -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-map-marked-alt text-blue-600"></i>
+                                    <h3 class="font-semibold text-gray-800">Visualización de ruta</h3>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button id="btn_centrar" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
+                                        <i class="fas fa-crosshairs mr-1"></i> Centrar
+                                    </button>
+                                    <span id="estado_gps" class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        Cargando...
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="map" class="w-full h-[600px] lg:h-[650px]"></div>
+                    </div>
+                </div>
+
+                <!-- Columna derecha: Panel de información y estadísticas -->
+                <div class="lg:col-span-1 space-y-6">
+                    
+                    <!-- Tarjeta de información general -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-4">
+                            <h3 class="text-white font-semibold flex items-center">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Información del recorrido
+                            </h3>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+                                <span class="text-sm text-gray-600">ID Recorrido</span>
+                                <span class="text-sm font-mono font-semibold text-gray-900">#{{ $recorrido->id }}</span>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="bg-blue-100 p-2 rounded-lg mr-3">
+                                    <i class="fas fa-route text-blue-600"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-xs text-gray-500">Ruta asignada</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $recorrido->ruta?->nombre ?? 'Sin ruta' }}</p>
+                                    @if($recorrido->ruta)
+                                    <p class="text-xs text-gray-600 mt-1">
+                                        <span class="bg-blue-50 px-2 py-0.5 rounded-full">
+                                            Tolerancia: {{ $recorrido->ruta->tolerancia_metros }}m
+                                        </span>
+                                    </p>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="bg-green-100 p-2 rounded-lg mr-3">
+                                    <i class="fas fa-truck text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Camión</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $recorrido->camion?->placa ?? 'N/A' }}</p>
+                                    <p class="text-xs text-gray-600">{{ $recorrido->camion?->codigo ?? '' }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start">
+                                <div class="bg-purple-100 p-2 rounded-lg mr-3">
+                                    <i class="fas fa-user text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Conductor</p>
+                                    <p class="text-sm font-semibold text-gray-900">{{ $recorrido->conductor?->name ?? 'N/A' }}</p>
+                                    <p class="text-xs text-gray-600">{{ $recorrido->conductor?->email ?? '' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta de estadísticas del recorrido -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-gray-800 to-gray-900 px-5 py-4">
+                            <h3 class="text-white font-semibold flex items-center">
+                                <i class="fas fa-chart-line mr-2"></i>
+                                Estadísticas
+                            </h3>
+                        </div>
+                        <div class="p-5">
+                            <div id="stats-container" class="space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Puntos GPS</span>
+                                    <span id="stats_puntos" class="text-lg font-bold text-gray-900">0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Distancia recorrida</span>
+                                    <span id="stats_distancia" class="text-lg font-bold text-gray-900">0 km</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Duración</span>
+                                    <span id="stats_duracion" class="text-lg font-bold text-gray-900">
+                                        @if($recorrido->fecha_inicio && $recorrido->fecha_fin)
+                                            @php
+                                                $duracion = $recorrido->fecha_inicio->diff($recorrido->fecha_fin);
+                                                $horas = $duracion->h + ($duracion->days * 24);
+                                            @endphp
+                                            {{ $horas }}h {{ $duracion->i }}min
+                                        @else
+                                            En curso
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="pt-3 mt-3 border-t border-gray-200">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-gray-600">Fuera de ruta</span>
+                                        <span id="stats_fuera_ruta" class="text-lg font-bold text-red-600">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <span class="text-sm text-gray-600">Tolerancia</span>
+                                        <span class="text-sm font-medium text-gray-900">{{ $recorrido->ruta?->tolerancia_metros ?? 50 }} m</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta de exportación -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-5">
+                            <div class="flex flex-col gap-3">
+                               
+                                <a href="#" onclick="exportarCSV({{ $recorrido->id }})"
+                                   class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                    <i class="fas fa-file-csv mr-2"></i>
+                                    Exportar CSV
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/leaflet.polylineDecorator.js"></script>
+    
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const map = L.map('map').setView([-17.7833, -63.1821], 13);
+        // Configuración inicial
+        const MAP_CONFIG = {
+            zoomControl: true,
+            attributionControl: true
+        };
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
+        const map = L.map('map', MAP_CONFIG).setView([-17.7833, -63.1821], 13);
+        
+        // Capa base - Google Maps sin desplazamiento
+        L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            attribution: 'Google Maps'
         }).addTo(map);
 
-        // Ruta planificada (azul)
-        // Ruta planificada (azul)
-        const geo = @json($recorrido->ruta?->geometria_geojson);
-        let rutaLatLngs = [];
-        let plan = null;
-
-        if (geo) {
-            const geom = JSON.parse(geo); // {type:"LineString", coordinates:[[lng,lat],...]}
-            const feature = { type: "Feature", geometry: geom, properties: {} };
-
-            plan = L.geoJSON(feature, {
-                style: { color: 'blue', weight: 5, opacity: 0.9 }
+        // Variables globales
+        let rutaPlanificadaLayer = null;
+        let recorridoRealLayer = null;
+        let puntosFueraRutaLayer = L.layerGroup().addTo(map);
+        let inicioMarker = null;
+        let finMarker = null;
+        let posicionActualMarker = null;
+        
+        // Tolerancia
+        const TOLERANCIA = {{ (int)($recorrido->ruta?->tolerancia_metros ?? 50) }};
+        
+        // Cargar ruta planificada (AZUL)
+        @if($recorrido->ruta && $recorrido->ruta->geometria_geojson)
+        try {
+            const geojson = JSON.parse('{!! addslashes($recorrido->ruta->geometria_geojson) !!}');
+            
+            rutaPlanificadaLayer = L.geoJSON(geojson, {
+                style: {
+                    color: '#3b82f6',
+                    weight: 5,
+                    opacity: 0.8,
+                    dashArray: '8, 12',
+                    lineCap: 'round'
+                }
             }).addTo(map);
+            
+            // Decorar la ruta con flechas (dirección)
+            if (rutaPlanificadaLayer.getLayers().length > 0) {
+                const latlngs = rutaPlanificadaLayer.getLayers()[0].getLatLngs();
+                L.polylineDecorator(latlngs, {
+                    patterns: [{
+                        offset: '25%',
+                        repeat: '50px',
+                        symbol: L.Symbol.arrowHead({
+                            pixelSize: 10,
+                            polygon: false,
+                            pathOptions: { color: '#2563eb', weight: 2 }
+                        })
+                    }]
+                }).addTo(map);
+            }
+            
+            // Marcador de INICIO (verde)
+            if (geojson.coordinates && geojson.coordinates.length > 0) {
+                const inicio = [geojson.coordinates[0][1], geojson.coordinates[0][0]];
+                inicioMarker = L.marker(inicio, {
+                    icon: L.divIcon({
+                        html: '<div style="background: #10b981; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"><i class="fas fa-play" style="color: white; font-size: 14px;"></i></div>',
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    })
+                }).addTo(map).bindPopup('🏁 <b>Inicio de ruta</b>');
+                
+                // Marcador de FIN (rojo)
+                const fin = [geojson.coordinates[geojson.coordinates.length-1][1], geojson.coordinates[geojson.coordinates.length-1][0]];
+                finMarker = L.marker(fin, {
+                    icon: L.divIcon({
+                        html: '<div style="background: #ef4444; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"><i class="fas fa-flag-checkered" style="color: white; font-size: 14px;"></i></div>',
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    })
+                }).addTo(map).bindPopup('🏁 <b>Fin de ruta</b>');
+            }
+            
+            // Ajustar vista
+            map.fitBounds(rutaPlanificadaLayer.getBounds(), { padding: [50, 50] });
+            
+        } catch(e) {
+            console.error('Error cargando GeoJSON:', e);
+        }
+        @endif
 
-            map.fitBounds(plan.getBounds(), { padding: [20,20] });
+        // Inicializar capa del recorrido real (ROJO)
+        recorridoRealLayer = L.polyline([], {
+            color: '#ef4444',
+            weight: 4,
+            opacity: 0.9,
+            lineCap: 'round'
+        }).addTo(map);
 
-            // guardamos puntos de la ruta para calcular distancia
-            rutaLatLngs = plan.getLayers()[0].getLatLngs();
+        // Funciones de utilidad
+        function calcularDistancia(latlngs) {
+            if (!latlngs || latlngs.length < 2) return 0;
+            let total = 0;
+            for (let i = 0; i < latlngs.length - 1; i++) {
+                total += latlngs[i].distanceTo(latlngs[i+1]);
+            }
+            return (total / 1000).toFixed(2); // km
         }
 
-        // Recorrido real (rojo) + marcador
-        let poly = L.polyline([], { color: 'red', weight: 4, opacity: 0.9 }).addTo(map);
-
-        let marker = null;
-        const tolerancia = {{ (int)($recorrido->ruta?->tolerancia_metros ?? 50) }};
-        let capaFuera = L.layerGroup().addTo(map);
-
-        function distToSegmentMeters(p, a, b) {
-            const R = 6371000;
-            function toXY(ll, ref) {
-                const x = (ll.lng - ref.lng) * Math.cos((ref.lat*Math.PI/180)) * (Math.PI/180) * R;
-                const y = (ll.lat - ref.lat) * (Math.PI/180) * R;
-                return {x,y};
+        function distanciaAPolilinea(p, polyline) {
+            if (!polyline || polyline.length < 2) return Infinity;
+            let minDist = Infinity;
+            for (let i = 0; i < polyline.length - 1; i++) {
+                const d = distanceToSegment(p, polyline[i], polyline[i+1]);
+                if (d < minDist) minDist = d;
             }
-            const ref = a;
-            const P = toXY(p, ref), A = toXY(a, ref), B = toXY(b, ref);
-            const ABx = B.x - A.x, ABy = B.y - A.y;
-            const APx = P.x - A.x, APy = P.y - A.y;
-            const ab2 = ABx*ABx + ABy*ABy;
-            const t = ab2 === 0 ? 0 : (APx*ABx + APy*ABy) / ab2;
-            const tt = Math.max(0, Math.min(1, t));
-            const Cx = A.x + tt*ABx, Cy = A.y + tt*ABy;
-            const dx = P.x - Cx, dy = P.y - Cy;
+            return minDist;
+        }
+
+        function distanceToSegment(p, a, b) {
+            const R = 6371000;
+            function toCartesian(ll, ref) {
+                const x = (ll.lng - ref.lng) * Math.cos(ref.lat * Math.PI/180) * (Math.PI/180) * R;
+                const y = (ll.lat - ref.lat) * (Math.PI/180) * R;
+                return {x, y};
+            }
+            const P = toCartesian(p, a);
+            const A = toCartesian(a, a);
+            const B = toCartesian(b, a);
+            
+            const AB = {x: B.x - A.x, y: B.y - A.y};
+            const AP = {x: P.x - A.x, y: P.y - A.y};
+            
+            const t = (AP.x * AB.x + AP.y * AB.y) / (AB.x * AB.x + AB.y * AB.y);
+            const clampedT = Math.max(0, Math.min(1, t));
+            
+            const C = {
+                x: A.x + clampedT * AB.x,
+                y: A.y + clampedT * AB.y
+            };
+            
+            const dx = P.x - C.x;
+            const dy = P.y - C.y;
             return Math.sqrt(dx*dx + dy*dy);
         }
 
-        function distToPolylineMeters(p, poly) {
-            if (!poly || poly.length < 2) return Infinity;
-            let min = Infinity;
-            for (let i = 0; i < poly.length - 1; i++) {
-                const d = distToSegmentMeters(p, poly[i], poly[i+1]);
-                if (d < min) min = d;
-            }
-            return min;
-        }
-
-
+        // Cargar puntos del recorrido
         async function cargarPuntos() {
-            const res = await fetch("{{ route('recorridos.puntos', $recorrido) }}", { credentials: "same-origin" });
-            const data = await res.json();
-
-            const latlngs = data.map(p => [parseFloat(p.lat), parseFloat(p.lng)]);
-            poly.setLatLngs(latlngs);
-            if (latlngs.length > 1) {
-                const bounds = L.latLngBounds(latlngs);
-                map.fitBounds(bounds, { padding: [30, 30] });
-            }
-
-            // marcar fuera de ruta
-            capaFuera.clearLayers();
-            let fuera = 0;
-
-            if (rutaLatLngs.length >= 2) {
-                data.forEach(pt => {
-                    const p = L.latLng(parseFloat(pt.lat), parseFloat(pt.lng));
-                    const d = distToPolylineMeters(p, rutaLatLngs);
-
-                    if (d > tolerancia) {
-                        fuera++;
-                        L.circleMarker(p, {
-                        radius: 7,
-                        color: 'red',
-                        fillColor: 'red',
-                        fillOpacity: 0.9,
-                        weight: 2
-                        }).addTo(capaFuera)
-                        .bindPopup(`Fuera de ruta ~ ${Math.round(d)} m`);
-
+            try {
+                const response = await fetch("{{ route('recorridos.puntos', $recorrido) }}");
+                const puntos = await response.json();
+                
+                if (!puntos || puntos.length === 0) {
+                    document.getElementById('estado_gps').innerHTML = '📡 Sin puntos GPS';
+                    return;
+                }
+                
+                // Convertir a LatLng
+                const latlngs = puntos.map(p => L.latLng(parseFloat(p.lat), parseFloat(p.lng)));
+                
+                // Actualizar polyline
+                recorridoRealLayer.setLatLngs(latlngs);
+                
+                // Calcular distancia
+                const distanciaKm = calcularDistancia(latlngs);
+                document.getElementById('stats_distancia').textContent = `${distanciaKm} km`;
+                document.getElementById('stats_puntos').textContent = latlngs.length;
+                
+                // Última posición
+                if (latlngs.length > 0) {
+                    const ultimo = latlngs[latlngs.length - 1];
+                    
+                    if (!posicionActualMarker) {
+                        posicionActualMarker = L.marker(ultimo, {
+                            icon: L.divIcon({
+                                html: '<div style="background: #8b5cf6; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3);"><i class="fas fa-truck" style="color: white; font-size: 16px;"></i></div>',
+                                iconSize: [40, 40],
+                                iconAnchor: [20, 20]
+                            })
+                        }).addTo(map).bindPopup('📍 <b>Última ubicación</b>');
+                    } else {
+                        posicionActualMarker.setLatLng(ultimo);
                     }
-                });
-            }
-
-
-            if (latlngs.length > 0) {
-                const last = latlngs[latlngs.length - 1];
-                if (!marker) marker = L.marker(last).addTo(map);
-                else marker.setLatLng(last);
-                document.getElementById('estado').textContent =
-                `Puntos: ${latlngs.length} | Fuera de ruta: ${fuera} | Tolerancia: ${tolerancia} m | Último: ${(data[data.length-1].fecha_gps ?? '')}`;
-
-            } else {
-                document.getElementById('estado').textContent = "Aún sin puntos GPS.";
+                    
+                    // Análisis de puntos fuera de ruta
+                    let fueraRuta = 0;
+                    puntosFueraRutaLayer.clearLayers();
+                    
+                    @if($recorrido->ruta && $recorrido->ruta->geometria_geojson)
+                    const rutaLatLngs = rutaPlanificadaLayer.getLayers()[0]?.getLatLngs() || [];
+                    
+                    if (rutaLatLngs.length > 0) {
+                        puntos.forEach(p => {
+                            const punto = L.latLng(parseFloat(p.lat), parseFloat(p.lng));
+                            const distancia = distanciaAPolilinea(punto, rutaLatLngs);
+                            
+                            if (distancia > TOLERANCIA) {
+                                fueraRuta++;
+                                
+                                // Marcador rojo para puntos fuera de ruta
+                                L.circleMarker(punto, {
+                                    radius: 6,
+                                    color: '#ef4444',
+                                    weight: 2,
+                                    opacity: 1,
+                                    fillColor: '#ef4444',
+                                    fillOpacity: 0.8,
+                                    dashArray: null
+                                }).addTo(puntosFueraRutaLayer)
+                                .bindPopup(`
+                                    <div style="font-family: system-ui; padding: 4px;">
+                                        <b style="color: #ef4444;">⚠️ Fuera de ruta</b><br>
+                                        <span style="font-size: 12px;">Distancia: ${Math.round(distancia)}m</span><br>
+                                        <span style="font-size: 11px; color: #666;">Tolerancia: ${TOLERANCIA}m</span>
+                                    </div>
+                                `);
+                            }
+                        });
+                    }
+                    @endif
+                    
+                    document.getElementById('stats_fuera_ruta').textContent = fueraRuta;
+                    document.getElementById('estado_gps').innerHTML = `
+                        🟢 ${latlngs.length} pts | ${fueraRuta} fuera | ${distanciaKm} km
+                    `;
+                }
+                
+                // Ajustar vista solo si es la primera carga
+                if (latlngs.length > 0 && !window.vistaAjustada) {
+                    const bounds = L.latLngBounds(latlngs);
+                    if (rutaPlanificadaLayer) {
+                        bounds.extend(rutaPlanificadaLayer.getBounds());
+                    }
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                    window.vistaAjustada = true;
+                }
+                
+            } catch(error) {
+                console.error('Error cargando puntos:', error);
+                document.getElementById('estado_gps').innerHTML = '❌ Error cargando datos';
             }
         }
 
+        // Botón centrar
+        document.getElementById('btn_centrar').addEventListener('click', () => {
+            if (recorridoRealLayer && recorridoRealLayer.getLatLngs().length > 0) {
+                const bounds = L.latLngBounds(recorridoRealLayer.getLatLngs());
+                if (rutaPlanificadaLayer) {
+                    bounds.extend(rutaPlanificadaLayer.getBounds());
+                }
+                map.fitBounds(bounds, { padding: [50, 50] });
+            } else if (rutaPlanificadaLayer) {
+                map.fitBounds(rutaPlanificadaLayer.getBounds(), { padding: [50, 50] });
+            }
+        });
+
+        // Inicializar
         cargarPuntos();
-        setInterval(cargarPuntos, 5000); // polling cada 5s
+        
+        // Polling cada 10 segundos si el recorrido está activo
+        @if($recorrido->estado === 'activo')
+        setInterval(cargarPuntos, 10000);
+        @endif
     });
+
+    // Funciones de exportación
+    function exportarKML(id) {
+        window.location.href = `/recorridos/${id}/exportar/kml`;
+    }
+    
+    function exportarCSV(id) {
+        window.location.href = `/recorridos/${id}/exportar/csv`;
+    }
     </script>
+
+    <style>
+        .leaflet-popup-content {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 12px;
+            line-height: 1.5;
+            margin: 12px 16px;
+        }
+        
+        .custom-div-icon {
+            background: none;
+            border: none;
+        }
+        
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        }
+        
+        .leaflet-control-zoom a {
+            background-color: white !important;
+            color: #374151 !important;
+            border-radius: 8px !important;
+            margin: 2px !important;
+            width: 36px !important;
+            height: 36px !important;
+            line-height: 36px !important;
+            font-size: 18px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        }
+        
+        .leaflet-control-zoom a:hover {
+            background-color: #f3f4f6 !important;
+        }
+    </style>
 </x-app-layout>
