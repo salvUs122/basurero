@@ -1,0 +1,18 @@
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Panel Encargado</h2>
+    </x-slot>
+
+    <div class="py-6">
+        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white p-6 shadow-sm sm:rounded-lg space-y-3">
+
+                <a class="underline" href="{{ route('rutas.index') }}">Rutas</a><br>
+                <a class="underline" href="{{ route('camiones.index') }}">Camiones (ver / asignar)</a><br>
+                <a class="underline" href="{{ route('monitoreo.index') }}">Monitoreo</a><br>
+                <a class="underline" href="{{ route('recorridos.index') }}">Recorridos</a>
+
+            </div>
+        </div>
+    </div>
+</x-app-layout>

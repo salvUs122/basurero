@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                🚛 Crear Nuevo Camión
+                ✏️ Editar Camión
             </h2>
         </div>
     </x-slot>
@@ -30,12 +30,20 @@
 
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                    <h3 class="text-lg font-semibold text-gray-800">Información del Camión</h3>
-                    <p class="text-sm text-gray-600">Ingresa los datos del nuevo camión</p>
+                    <div class="flex items-center">
+                        <div class="bg-blue-600 p-2 rounded-lg mr-3">
+                            <i class="fas fa-truck text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800">Editar Camión</h3>
+                            <p class="text-sm text-gray-600">Modifica la información del camión</p>
+                        </div>
+                    </div>
                 </div>
 
-                <form method="POST" action="{{ route('camiones.store') }}" class="p-6">
+                <form method="POST" action="{{ route('camiones.update', $camion) }}" class="p-6">
                     @csrf
+                    @method('PUT')
 
                     <div class="space-y-6">
                         <!-- Placa -->
@@ -46,7 +54,7 @@
                             <input type="text" name="placa" required
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                    placeholder="Ej: ABC-1234"
-                                   value="{{ old('placa') }}">
+                                   value="{{ old('placa', $camion->placa) }}">
                             <p class="mt-1 text-sm text-gray-500">Placa oficial del vehículo</p>
                         </div>
 
@@ -58,7 +66,7 @@
                             <input type="text" name="codigo" required
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                    placeholder="Ej: CAM-001"
-                                   value="{{ old('codigo') }}">
+                                   value="{{ old('codigo', $camion->codigo) }}">
                             <p class="mt-1 text-sm text-gray-500">Código único para identificación interna</p>
                         </div>
 
@@ -71,7 +79,7 @@
                                 <!-- Activo -->
                                 <label class="relative flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                                     <input type="radio" name="estado" value="activo" 
-                                           {{ old('estado', 'activo') == 'activo' ? 'checked' : '' }}
+                                           {{ old('estado', $camion->estado) == 'activo' ? 'checked' : '' }}
                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
                                     <div class="ml-3">
                                         <span class="block text-sm font-medium text-gray-900">Activo</span>
@@ -85,7 +93,7 @@
                                 <!-- Inactivo -->
                                 <label class="relative flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                                     <input type="radio" name="estado" value="inactivo" 
-                                           {{ old('estado') == 'inactivo' ? 'checked' : '' }}
+                                           {{ old('estado', $camion->estado) == 'inactivo' ? 'checked' : '' }}
                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
                                     <div class="ml-3">
                                         <span class="block text-sm font-medium text-gray-900">Inactivo</span>
@@ -99,7 +107,7 @@
                                 <!-- Mantenimiento -->
                                 <label class="relative flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                                     <input type="radio" name="estado" value="mantenimiento" 
-                                           {{ old('estado') == 'mantenimiento' ? 'checked' : '' }}
+                                           {{ old('estado', $camion->estado) == 'mantenimiento' ? 'checked' : '' }}
                                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300">
                                     <div class="ml-3">
                                         <span class="block text-sm font-medium text-gray-900">Mantenimiento</span>
@@ -121,7 +129,7 @@
                             <button type="submit" 
                                     class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-lg hover:shadow-xl">
                                 <i class="fas fa-save mr-2"></i>
-                                Guardar Camión
+                                Actualizar Camión
                             </button>
                         </div>
                     </div>
