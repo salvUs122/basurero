@@ -1,10 +1,9 @@
-<x-app-layout>
+<x-dinamico-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             Monitoreo en tiempo real
         </h2>
     </x-slot>
-
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <!-- Tabla de estado de recorridos -->
@@ -45,6 +44,17 @@
                 @else
                     <div id="map" style="height: 600px; border-radius: 8px; border: 1px solid #e5e7eb;"></div>
                     
+                    <!-- Agrega estos botones encima del mapa o en el header -->
+                    <div class="flex justify-end items-center gap-2 mb-2">
+                        <button id="btn_fullscreen" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-sm rounded-lg transition-colors flex items-center gap-1">
+                            <i class="fas fa-expand"></i>
+                            <span class="hidden sm:inline">Pantalla completa</span>
+                        </button>
+                        <button id="btn_centrar_mapa" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-sm rounded-lg transition-colors flex items-center gap-1">
+                            <i class="fas fa-crosshairs"></i>
+                            <span class="hidden sm:inline">Centrar</span>
+                        </button>
+                    </div>
                     <!-- Selector de recorrido -->
                     <div class="mt-4 p-4 bg-gray-50 rounded-lg">
                         <div class="flex items-center gap-3">
@@ -93,7 +103,7 @@
         // Inicializar mapa
         function initMap() {
             map = L.map('map').setView([-17.7833, -63.1821], 13);
-            
+            window.vistaInicializada = false;
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap'
@@ -264,9 +274,11 @@
                     }
                 });
                 
-                // Ajustar vista del mapa
-                if (bounds) {
-                    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+                // ✅ CENTRAR SIN ALEJAR
+                if (bounds && !window.vistaInicializada) {
+                    const center = bounds.getCenter();
+                    map.setView(center, 13);
+                    window.vistaInicializada = true;
                 }
                 
                 // Actualizar tabla de estado
@@ -368,6 +380,57 @@
         
         // Actualizar cada 5 segundos
         setInterval(cargarPuntosActivos, 5000);
+        // Función para pantalla completa
+        function toggleFullscreen() {
+            const mapContainer = document.getElementById('map');
+            
+            if (!document.fullscreenElement) {
+                if (mapContainer.requestFullscreen) {
+                    mapContainer.requestFullscreen();
+                } else if (mapContainer.webkitRequestFullscreen) {
+                    mapContainer.webkitRequestFullscreen();
+                } else if (mapContainer.msRequestFullscreen) {
+                    mapContainer.msRequestFullscreen();
+                }
+                document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-compress"></i><span class="hidden sm:inline ml-1">Salir</span>';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+                document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-expand"></i><span class="hidden sm:inline ml-1">Pantalla completa</span>';
+            }
+        }
+
+        // Evento del botón
+        document.getElementById('btn_fullscreen').addEventListener('click', toggleFullscreen);
+
+        // Botón centrar manual
+        document.getElementById('btn_centrar_mapa').addEventListener('click', function() {
+            if (bounds) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+        });
+
+        // Detectar cambio de pantalla completa
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+        document.addEventListener('msfullscreenchange', updateFullscreenIcon);
+
+        function updateFullscreenIcon() {
+            const btn = document.getElementById('btn_fullscreen');
+            if (btn) {
+                if (document.fullscreenElement) {
+                    btn.innerHTML = '<i class="fas fa-compress"></i><span class="hidden sm:inline ml-1">Salir</span>';
+                } else {
+                    btn.innerHTML = '<i class="fas fa-expand"></i><span class="hidden sm:inline ml-1">Pantalla completa</span>';
+                }
+            }
+        }
+
     });
     </script>
     @endif
@@ -390,4 +453,4 @@
             100% { opacity: 0.6; }
         }
     </style>
-</x-app-layout>
+</x-dinamico-layout>

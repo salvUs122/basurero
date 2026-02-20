@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dinamico-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -153,4 +153,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-dinamico-layout>

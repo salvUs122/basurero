@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-dinamico-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div class="flex items-center gap-3">
@@ -49,6 +49,9 @@
                                     <h3 class="font-semibold text-gray-800">Visualización de ruta</h3>
                                 </div>
                                 <div class="flex items-center gap-3">
+                                     <button id="btn_fullscreen" class="text-sm bg-gray-100 hover:bg-gray-200 px-2 py-1.5 rounded-lg transition-colors" title="Pantalla completa">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
                                     <button id="btn_centrar" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors">
                                         <i class="fas fa-crosshairs mr-1"></i> Centrar
                                     </button>
@@ -214,7 +217,7 @@
         // Tolerancia
         const TOLERANCIA = {{ (int)($recorrido->ruta?->tolerancia_metros ?? 50) }};
         
-        // Cargar ruta planificada (AZUL)
+        // Cargar ruta planificada (AZUL) - VERSIÓN ORIGINAL QUE FUNCIONABA
         @if($recorrido->ruta && $recorrido->ruta->geometria_geojson)
         try {
             const geojson = JSON.parse('{!! addslashes($recorrido->ruta->geometria_geojson) !!}');
@@ -267,9 +270,6 @@
                 }).addTo(map).bindPopup('🏁 <b>Fin de ruta</b>');
             }
             
-            // Ajustar vista
-            map.fitBounds(rutaPlanificadaLayer.getBounds(), { padding: [50, 50] });
-            
         } catch(e) {
             console.error('Error cargando GeoJSON:', e);
         }
@@ -290,7 +290,7 @@
             for (let i = 0; i < latlngs.length - 1; i++) {
                 total += latlngs[i].distanceTo(latlngs[i+1]);
             }
-            return (total / 1000).toFixed(2); // km
+            return (total / 1000).toFixed(2);
         }
 
         function distanciaAPolilinea(p, polyline) {
@@ -341,18 +341,14 @@
                     return;
                 }
                 
-                // Convertir a LatLng
                 const latlngs = puntos.map(p => L.latLng(parseFloat(p.lat), parseFloat(p.lng)));
                 
-                // Actualizar polyline
                 recorridoRealLayer.setLatLngs(latlngs);
                 
-                // Calcular distancia
                 const distanciaKm = calcularDistancia(latlngs);
                 document.getElementById('stats_distancia').textContent = `${distanciaKm} km`;
                 document.getElementById('stats_puntos').textContent = latlngs.length;
                 
-                // Última posición
                 if (latlngs.length > 0) {
                     const ultimo = latlngs[latlngs.length - 1];
                     
@@ -368,14 +364,13 @@
                         posicionActualMarker.setLatLng(ultimo);
                     }
                     
-                    // Análisis de puntos fuera de ruta
                     let fueraRuta = 0;
                     puntosFueraRutaLayer.clearLayers();
                     
                     @if($recorrido->ruta && $recorrido->ruta->geometria_geojson)
-                    const rutaLatLngs = rutaPlanificadaLayer.getLayers()[0]?.getLatLngs() || [];
-                    
-                    if (rutaLatLngs.length > 0) {
+                    if (rutaPlanificadaLayer && rutaPlanificadaLayer.getLayers().length > 0) {
+                        const rutaLatLngs = rutaPlanificadaLayer.getLayers()[0].getLatLngs();
+                        
                         puntos.forEach(p => {
                             const punto = L.latLng(parseFloat(p.lat), parseFloat(p.lng));
                             const distancia = distanciaAPolilinea(punto, rutaLatLngs);
@@ -383,21 +378,18 @@
                             if (distancia > TOLERANCIA) {
                                 fueraRuta++;
                                 
-                                // Marcador rojo para puntos fuera de ruta
                                 L.circleMarker(punto, {
                                     radius: 6,
                                     color: '#ef4444',
                                     weight: 2,
                                     opacity: 1,
                                     fillColor: '#ef4444',
-                                    fillOpacity: 0.8,
-                                    dashArray: null
+                                    fillOpacity: 0.8
                                 }).addTo(puntosFueraRutaLayer)
                                 .bindPopup(`
-                                    <div style="font-family: system-ui; padding: 4px;">
+                                    <div>
                                         <b style="color: #ef4444;">⚠️ Fuera de ruta</b><br>
-                                        <span style="font-size: 12px;">Distancia: ${Math.round(distancia)}m</span><br>
-                                        <span style="font-size: 11px; color: #666;">Tolerancia: ${TOLERANCIA}m</span>
+                                        Distancia: ${Math.round(distancia)}m
                                     </div>
                                 `);
                             }
@@ -411,19 +403,19 @@
                     `;
                 }
                 
-                // Ajustar vista solo si es la primera carga
-                if (latlngs.length > 0 && !window.vistaAjustada) {
-                    const bounds = L.latLngBounds(latlngs);
-                    if (rutaPlanificadaLayer) {
-                        bounds.extend(rutaPlanificadaLayer.getBounds());
+                if (!window.vistaInicializada) {
+                    if (latlngs.length > 0) {
+                        map.setView(latlngs[0], 16);
+                    } else if (rutaPlanificadaLayer) {
+                        const center = rutaPlanificadaLayer.getBounds().getCenter();
+                        map.setView(center, 14);
                     }
-                    map.fitBounds(bounds, { padding: [50, 50] });
-                    window.vistaAjustada = true;
+                    window.vistaInicializada = true;
                 }
                 
             } catch(error) {
-                console.error('Error cargando puntos:', error);
-                document.getElementById('estado_gps').innerHTML = '❌ Error cargando datos';
+                console.error('Error:', error);
+                document.getElementById('estado_gps').innerHTML = '❌ Error';
             }
         }
 
@@ -443,20 +435,49 @@
         // Inicializar
         cargarPuntos();
         
-        // Polling cada 10 segundos si el recorrido está activo
         @if($recorrido->estado === 'activo')
         setInterval(cargarPuntos, 10000);
         @endif
     });
 
     // Funciones de exportación
-    function exportarKML(id) {
-        window.location.href = `/recorridos/${id}/exportar/kml`;
-    }
-    
     function exportarCSV(id) {
         window.location.href = `/recorridos/${id}/exportar/csv`;
     }
+
+    // Función para pantalla completa
+    function toggleFullscreen() {
+        const mapContainer = document.getElementById('map');
+        
+        if (!document.fullscreenElement) {
+            if (mapContainer.requestFullscreen) {
+                mapContainer.requestFullscreen();
+            } else if (mapContainer.webkitRequestFullscreen) {
+                mapContainer.webkitRequestFullscreen();
+            } else if (mapContainer.msRequestFullscreen) {
+                mapContainer.msRequestFullscreen();
+            }
+            document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-expand"></i>';
+        }
+    }
+
+    document.getElementById('btn_fullscreen').addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('fullscreenchange', () => {
+        const btn = document.getElementById('btn_fullscreen');
+        if (btn) {
+            btn.innerHTML = document.fullscreenElement ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+        }
+    });
     </script>
 
     <style>
@@ -493,4 +514,4 @@
             background-color: #f3f4f6 !important;
         }
     </style>
-</x-app-layout>
+</x-dinamico-layout>

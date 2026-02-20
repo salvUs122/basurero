@@ -141,6 +141,10 @@
                         </div>
                     </div>
                 </div>
+                <!-- Tarjetas de estadísticas existentes... -->
+
+               
+                
             </div>
 
             <!-- Tabla de recorridos activos -->
@@ -275,11 +279,22 @@
                         </div>
                         <div class="ml-4">
                             <h3 class="font-semibold text-gray-800">Gestión de Camiones</h3>
-                            <p class="text-sm text-gray-600">Administrar flota</p>
+                            <p class="text-sm text-gray-600">Asignar rutas</p>
                         </div>
                     </div>
                 </a>
-
+                <a href="{{ route('admin.conductores.index') }}" 
+                class="bg-white rounded-xl card-shadow p-6 hover-lift border border-transparent hover:border-purple-200">
+                    <div class="flex items-center">
+                        <div class="bg-purple-100 p-3 rounded-lg">
+                            <i class="fas fa-users text-purple-600 text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="font-semibold text-gray-800">Conductores</h3>
+                            <p class="text-sm text-gray-600">Administrar personal</p>
+                        </div>
+                    </div>
+                </a>
                 <a href="{{ route('rutas.index') }}" 
                    class="bg-white rounded-xl card-shadow p-6 hover-lift border border-transparent hover:border-purple-200">
                     <div class="flex items-center">
@@ -305,6 +320,18 @@
                         </div>
                     </div>
                 </a>
+                 <a href="{{ route('admin.encargados.index') }}" 
+                    class="bg-white rounded-xl card-shadow p-6 hover-lift border border-transparent hover:border-orange-200">
+                        <div class="flex items-center">
+                            <div class="bg-orange-100 p-3 rounded-lg">
+                                <i class="fas fa-users-cog text-orange-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="font-semibold text-gray-800">Gestionar Encargados</h3>
+                                <p class="text-sm text-gray-600">Crear y administrar</p>
+                            </div>
+                        </div>
+                    </a>
             </div>
 
             <!-- Footer -->

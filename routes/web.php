@@ -12,7 +12,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AsignacionRutaCamionController;
 use App\Http\Controllers\ConductorRecorridoController;
 use App\Http\Controllers\ConductorGpsController;
-use App\Models\Camion; 
+use App\Models\Camion;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,11 +20,16 @@ use App\Models\Camion;
 |--------------------------------------------------------------------------
 */
 
-// Redirección inicial
+// ============================================
+// RUTAS PÚBLICAS
+// ============================================
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// ============================================
+// DASHBOARD PRINCIPAL (REDIRECCIÓN POR ROL)
+// ============================================
 // Dashboard principal (redirige según rol)
 Route::get('/dashboard', function () {
     /** @var \App\Models\User $u */
@@ -37,7 +42,9 @@ Route::get('/dashboard', function () {
     return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Rutas de perfil (para todos los usuarios autenticados)
+// ============================================
+// PERFIL DE USUARIO (TODOS LOS ROLES)
+// ============================================
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -47,111 +54,145 @@ Route::middleware('auth')->group(function () {
 // ============================================
 // RUTAS PARA ADMINISTRADOR
 // ============================================
-Route::middleware(['auth', 'role:administrador'])->group(function () {
-    // Dashboard administrativo
-    Route::get('/admin', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+Route::middleware(['auth', 'role:administrador'])->prefix('admin')->name('admin.')->group(function () {
     
-    // Gestión de camiones
-    Route::get('/camiones', [CamionController::class, 'index'])->name('camiones.index');
-    Route::get('/camiones/crear', [CamionController::class, 'create'])->name('camiones.create');
-    Route::post('/camiones', [CamionController::class, 'store'])->name('camiones.store');
+    // Dashboard
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    // ===== GESTIÓN DE ENCARGADOS =====
+    Route::prefix('encargados')->name('encargados.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\EncargadoController::class, 'index'])->name('index');
+        Route::get('/crear', [App\Http\Controllers\Admin\EncargadoController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\EncargadoController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\Admin\EncargadoController::class, 'show'])->name('show');
+        Route::get('/{id}/editar', [App\Http\Controllers\Admin\EncargadoController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\Admin\EncargadoController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\EncargadoController::class, 'destroy'])->name('destroy');
+    });
+    // ===== GESTIÓN DE CONDUCTORES =====
+    Route::prefix('conductores')->name('conductores.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\ConductorController::class, 'index'])->name('index');
+        Route::get('/crear', [App\Http\Controllers\Admin\ConductorController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\Admin\ConductorController::class, 'store'])->name('store');
+        Route::get('/{id}', [App\Http\Controllers\Admin\ConductorController::class, 'show'])->name('show');
+        Route::get('/{id}/editar', [App\Http\Controllers\Admin\ConductorController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [App\Http\Controllers\Admin\ConductorController::class, 'update'])->name('update');
+        Route::delete('/{id}', [App\Http\Controllers\Admin\ConductorController::class, 'destroy'])->name('destroy');
+    });
     
-    // Asignación de rutas a camiones
-    Route::get('/camiones/{camion}/asignar-rutas', [AsignacionRutaCamionController::class, 'edit'])
-        ->name('camiones.asignar_rutas');
-    Route::post('/camiones/{camion}/asignar-rutas', [AsignacionRutaCamionController::class, 'update'])
-        ->name('camiones.guardar_rutas');
+    
+    // APIs para conductor (opcional)
+    Route::get('/conductores/{conductor}/camiones', [App\Http\Controllers\Admin\AsignarConductorController::class, 'getCamionesConductor'])
+        ->name('conductores.camiones');
+    Route::get('/camiones/{camion}/rutas-hoy', [App\Http\Controllers\Admin\AsignarConductorController::class, 'getRutasHoy'])
+        ->name('camiones.rutas_hoy');
 });
 
-    // Editar y eliminar camiones
-    Route::get('/camiones/{camion}/editar', [CamionController::class, 'edit'])->name('camiones.edit');
-    Route::put('/camiones/{camion}', [CamionController::class, 'update'])->name('camiones.update');
-    Route::delete('/camiones/{camion}', [CamionController::class, 'destroy'])->name('camiones.destroy');
-
-    // Obtener datos de camión para AJAX
-    Route::get('/camiones/{camion}/datos', [CamionController::class, 'getCamion'])->name('camiones.datos');
-
-    // Eliminar asignación específica
-    Route::delete('/camiones/{camion}/eliminar-ruta', [AsignacionRutaCamionController::class, 'destroyAsignacion'])
-        ->name('camiones.eliminar_ruta');
-
-    // Actualizar horarios por día
-    Route::post('/camiones/{camion}/horarios', [AsignacionRutaCamionController::class, 'updateHorariosPorDia'])
-        ->name('camiones.horarios');
+// ============================================
+// RUTAS PARA ADMINISTRADOR (GESTIÓN DE CAMIONES Y RUTAS)
+// ============================================
+Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
+    
+    // ===== GESTIÓN DE CAMIONES =====
+    Route::prefix('camiones')->name('camiones.')->group(function () {
+        Route::get('/', [CamionController::class, 'index'])->name('index');
+        Route::get('/crear', [CamionController::class, 'create'])->name('create');
+        Route::post('/', [CamionController::class, 'store'])->name('store');
+        Route::get('/{camion}/editar', [CamionController::class, 'edit'])->name('edit');
+        Route::put('/{camion}', [CamionController::class, 'update'])->name('update');
+        Route::delete('/{camion}', [CamionController::class, 'destroy'])->name('destroy');
+        Route::get('/{camion}/datos', [CamionController::class, 'getCamion'])->name('datos');
+        Route::get('/{camion}/detalles', function(Camion $camion) {
+            $html = view('camiones.partials.detalles', compact('camion'))->render();
+            return response()->json(['html' => $html]);
+        })->name('detalles');
+    });
+    
+    // ===== ASIGNACIÓN DE RUTAS A CAMIONES =====
+    Route::prefix('camiones/{camion}')->name('camiones.')->group(function () {
+        Route::get('/asignar-rutas', [AsignacionRutaCamionController::class, 'edit'])->name('asignar_rutas');
+        Route::post('/asignar-rutas', [AsignacionRutaCamionController::class, 'update'])->name('guardar_rutas');
+        Route::delete('/eliminar-ruta', [AsignacionRutaCamionController::class, 'destroyAsignacion'])->name('eliminar_ruta');
+        Route::post('/horarios', [AsignacionRutaCamionController::class, 'updateHorariosPorDia'])->name('horarios');
+        Route::post('/guardar-horarios-dia', [AsignacionRutaCamionController::class, 'guardarHorariosPorDia'])->name('guardar_horarios_dia');
+    });
+});
 
 // ============================================
 // RUTAS PARA ADMINISTRADOR Y ENCARGADO
 // ============================================
 Route::middleware(['auth', 'role:administrador|encargado'])->group(function () {
-    // Gestión de rutas
-    Route::get('/rutas', [RutaController::class, 'index'])->name('rutas.index');
-    Route::get('/rutas/crear', [RutaController::class, 'create'])->name('rutas.create');
-    Route::post('/rutas', [RutaController::class, 'store'])->name('rutas.store');
-    
-    // Monitoreo en vivo
-    Route::get('/monitoreo', [MonitoreoController::class, 'index'])->name('monitoreo.index');
-    Route::get('/monitoreo/{recorrido}/puntos', [MonitoreoController::class, 'puntos'])->name('monitoreo.puntos');
-    Route::get('/monitoreo/{recorrido}/eventos', [MonitoreoController::class, 'eventos'])->name('monitoreo.eventos');
-    
-    // PUNTOS ACTIVOS EN TIEMPO REAL (RUTA NUEVA - DEBE ESTAR AQUÍ)
-    Route::get('/monitoreo/puntos-activos', [MonitoreoController::class, 'puntosActivos'])
-        ->name('monitoreo.puntos_activos');
-    
-    // Historial de recorridos
-    Route::get('/recorridos', [RecorridosAdminController::class, 'index'])->name('recorridos.index');
-    Route::get('/recorridos/{recorrido}', [RecorridosAdminController::class, 'show'])->name('recorridos.show.historial');
-    
-    // Detalles de recorridos individuales
-    Route::get('/recorridos/{recorrido}/detalle', [RecorridoController::class, 'show'])->name('recorridos.show');
-    Route::get('/recorridos/{recorrido}/puntos', [RecorridoController::class, 'puntos'])->name('recorridos.puntos');
+    // ===== ASIGNAR CONDUCTOR A CAMIÓN =====
+    Route::get('/camiones/{camion}/asignar-conductor', [App\Http\Controllers\Admin\AsignarConductorController::class, 'edit'])
+        ->name('camiones.asignar_conductor');
+    Route::put('/camiones/{camion}/asignar-conductor', [App\Http\Controllers\Admin\AsignarConductorController::class, 'update'])
+        ->name('camiones.asignar_conductor.update');
+    // ===== GESTIÓN DE RUTAS =====
+    Route::prefix('rutas')->name('rutas.')->group(function () {
+        Route::get('/', [RutaController::class, 'index'])->name('index');
+        Route::get('/crear', [RutaController::class, 'create'])->name('create');
+        Route::post('/', [RutaController::class, 'store'])->name('store');
+        Route::get('/{id}', [RutaController::class, 'show'])->name('show');
+        Route::get('/{id}/editar', [RutaController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [RutaController::class, 'update'])->name('update');
+        Route::delete('/{id}', [RutaController::class, 'destroy'])->name('destroy');
     });
-
-    // Detalles del camión (modal) - Esto también debe estar en el grupo correcto
-    Route::get('/camiones/{camion}/detalles', function(Camion $camion) {
-        $html = view('camiones.partials.detalles', compact('camion'))->render();
-        return response()->json(['html' => $html]);
-    })->middleware(['auth', 'role:administrador|encargado']);
-
-    Route::post('/camiones/{camion}/guardar-horarios-dia', [AsignacionRutaCamionController::class, 'guardarHorariosPorDia'])
-        ->name('camiones.guardar_horarios_dia');
-
-     //puntos GPS del recorrido
-    Route::get('/recorridos/{recorrido}/exportar/gps', [RecorridoController::class, 'exportarGPS'])->name('recorridos.exportar.gps');
-    Route::get('/recorridos/{recorrido}/exportar/kml', [RecorridoController::class, 'exportarKML'])->name('recorridos.exportar.kml');
-    Route::get('/recorridos/{recorrido}/exportar/csv', [RecorridoController::class, 'exportarCSV'])->name('recorridos.exportar.csv');
-   
-    Route::get('/recorridos/{recorrido}/exportar/csv', [RecorridoController::class, 'exportarCSV'])->name('recorridos.exportar.csv');
-    // ============================================
+    
+    // ===== MONITOREO EN VIVO =====
+    Route::prefix('monitoreo')->name('monitoreo.')->group(function () {
+        Route::get('/', [MonitoreoController::class, 'index'])->name('index');
+        Route::get('/puntos-activos', [MonitoreoController::class, 'puntosActivos'])->name('puntos_activos');
+        Route::get('/{recorrido}/puntos', [MonitoreoController::class, 'puntos'])->name('puntos');
+        Route::get('/{recorrido}/eventos', [MonitoreoController::class, 'eventos'])->name('eventos');
+    });
+    
+    // ===== HISTORIAL DE RECORRIDOS =====
+    Route::prefix('recorridos')->name('recorridos.')->group(function () {
+        Route::get('/', [RecorridosAdminController::class, 'index'])->name('index');
+        Route::get('/{recorrido}', [RecorridosAdminController::class, 'show'])->name('show.historial');
+        Route::get('/{recorrido}/detalle', [RecorridoController::class, 'show'])->name('show');
+        Route::get('/{recorrido}/puntos', [RecorridoController::class, 'puntos'])->name('puntos');
+        
+        // Exportaciones
+        Route::get('/{recorrido}/exportar/gps', [RecorridoController::class, 'exportarGPS'])->name('exportar.gps');
+        Route::get('/{recorrido}/exportar/kml', [RecorridoController::class, 'exportarKML'])->name('exportar.kml');
+        Route::get('/{recorrido}/exportar/csv', [RecorridoController::class, 'exportarCSV'])->name('exportar.csv');
+    });
+});
+// ============================================
 // RUTAS PARA ENCARGADO
 // ============================================
 Route::middleware(['auth', 'role:encargado'])->group(function () {
-    // Dashboard del encargado (redirige al dashboard administrativo)
+    // Dashboard del encargado
+    Route::get('/encargado/dashboard', [App\Http\Controllers\EncargadoDashboardController::class, 'index'])->name('encargado.dashboard');
+    
+    // Redirección desde /encargado
     Route::get('/encargado', function () {
-        return redirect()->route('admin.dashboard');
-    })->name('encargado.dashboard');
+        return redirect()->route('encargado.dashboard');
+    })->name('encargado.inicio');
 });
 
 // ============================================
 // RUTAS PARA CONDUCTOR
 // ============================================
 Route::middleware(['auth', 'role:conductor'])->group(function () {
+    
     // Dashboard del conductor
     Route::get('/conductor', function () {
         return redirect()->route('conductor.recorrido');
     })->name('conductor.dashboard');
     
     // Gestión de recorridos
-    Route::get('/conductor/recorrido', [ConductorRecorridoController::class, 'pantalla'])
-        ->name('conductor.recorrido');
-    Route::post('/conductor/recorrido/iniciar', [ConductorRecorridoController::class, 'iniciar'])
-        ->name('conductor.recorrido.iniciar');
-    Route::post('/conductor/recorrido/finalizar', [ConductorRecorridoController::class, 'finalizar'])
-        ->name('conductor.recorrido.finalizar');
-    
-    // Envío de GPS
-    Route::post('/conductor/gps', [ConductorGpsController::class, 'guardar'])
-        ->name('conductor.gps.guardar');
+    Route::prefix('conductor')->name('conductor.')->group(function () {
+        Route::get('/recorrido', [ConductorRecorridoController::class, 'pantalla'])->name('recorrido');
+        Route::post('/recorrido/iniciar', [ConductorRecorridoController::class, 'iniciar'])->name('recorrido.iniciar');
+        Route::post('/recorrido/finalizar', [ConductorRecorridoController::class, 'finalizar'])->name('recorrido.finalizar');
+        Route::post('/gps', [ConductorGpsController::class, 'guardar'])->name('gps.guardar');
+    });
 });
+
+// Envío de GPS múltiple (para worker)
+Route::post('/conductor/gps/multiples', [ConductorGpsController::class, 'guardarMultiples'])
+    ->name('conductor.gps.multiples');
 
 // ============================================
 // ARCHIVOS DE AUTENTICACIÓN

@@ -1,5 +1,5 @@
-<x-app-layout>
-    <x-slot name="header">
+<x-dinamico-layout>
+        <x-slot name="header">
         <div class="flex justify-between items-center">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -209,6 +209,10 @@
                                                class="text-blue-600 hover:text-blue-900 inline-flex items-center px-2 py-1 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
                                                 <i class="fas fa-route mr-1"></i> Rutas
                                             </a>
+                                            <a href="{{ route('camiones.asignar_conductor', $camion) }}" 
+                                            class="text-purple-600 hover:text-purple-900 inline-flex items-center px-2 py-1 bg-purple-50 rounded-lg hover:bg-purple-100">
+                                                    <i class="fas fa-user mr-1"></i> Conductor
+                                                </a>
                                             <a href="{{ route('camiones.edit', $camion) }}" 
                                                class="text-green-600 hover:text-green-900 inline-flex items-center px-2 py-1 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
                                                 <i class="fas fa-edit mr-1"></i> Editar
@@ -346,4 +350,4 @@
             transition-duration: 300ms;
         }
     </style>
-</x-app-layout>
+</x-dinamico-layout>

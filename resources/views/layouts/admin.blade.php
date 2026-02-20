@@ -5,50 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <title>{{ config('app.name', 'Laravel') }} - Admin</title>
 
-    <!-- Tailwind CSS desde CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
-
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-    
-    <style>
-        /* Estilos adicionales para gradientes */
-        .bg-gradient-to-r {
-            background-image: linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to));
-        }
-        .shadow-lg {
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        .hover\:scale-105:hover {
-            transform: scale(1.05);
-        }
-        .transition-transform {
-            transition-property: transform;
-        }
-        .duration-300 {
-            transition-duration: 300ms;
-        }
-        .nav-link {
-            transition: all 0.3s ease;
-        }
-        .nav-link:hover {
-            transform: translateY(-2px);
-        }
-    </style>
+    @stack('styles')
 </head>
-<body class="font-sans antialiased bg-gray-100">
+<body class="bg-gray-100 font-sans antialiased">
     <div class="min-h-screen">
-        <!-- ========== NUEVO NAVBAR SUPERIOR ========== -->
+        <!-- Navigation -->
         <nav class="bg-white border-b border-gray-100">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
@@ -57,7 +26,6 @@
                             <i class="fas fa-truck text-blue-600 text-xl mr-2"></i>
                             <span class="font-bold text-gray-800">Admin Panel</span>
                         </a>
-                        
                         
                     </div>
 
@@ -75,27 +43,20 @@
         </nav>
 
         <!-- Page Header -->
-        @isset($header)
+        @if(isset($header))
             <header class="bg-white shadow">
                 <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
                     {{ $header }}
                 </div>
             </header>
-        @endisset
+        @endif
 
         <!-- Page Content -->
         <main>
-            {{ $slot }}
+            @yield('content')
         </main>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-    
-    <!-- Alpine.js para dropdowns -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
     @stack('scripts')
 </body>
 </html>

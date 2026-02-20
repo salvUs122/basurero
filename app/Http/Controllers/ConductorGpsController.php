@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log; // AÑADE ESTA LÍNEA
 use App\Models\EventoRecorrido;
 use App\Support\Geo;
+use Illuminate\Support\Facades\DB;
 
 class ConductorGpsController extends Controller
 {
@@ -118,5 +119,131 @@ class ConductorGpsController extends Controller
                 'mensaje' => 'Error interno: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+        /**
+     * Guardar múltiples puntos GPS (para worker)
+     */
+    public function guardarMultiples(Request $request)
+    {
+        $request->validate([
+            'puntos' => 'required|array|min:1',
+            'puntos.*.lat' => 'required|numeric',
+            'puntos.*.lng' => 'required|numeric',
+            'puntos.*.precision_m' => 'nullable|numeric',
+            'puntos.*.velocidad_mps' => 'nullable|numeric',
+            'puntos.*.rumbo_grados' => 'nullable|numeric',
+            'puntos.*.fecha_gps' => 'required|date',
+            'recorrido_id' => 'nullable|exists:recorridos,id'
+        ]);
+
+        // Buscar recorrido activo
+        $recorrido = Recorrido::with('ruta')
+            ->where('conductor_id', Auth::id())
+            ->where('estado', 'en_curso')
+            ->latest('id')
+            ->first();
+
+        if (!$recorrido) {
+            return response()->json([
+                'ok' => false,
+                'mensaje' => 'No hay recorrido en curso'
+            ], 409);
+        }
+
+        $puntosGuardados = 0;
+        $errores = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->puntos as $punto) {
+                // Crear punto
+                PuntoRecorrido::create([
+                    'recorrido_id' => $recorrido->id,
+                    'lat' => $punto['lat'],
+                    'lng' => $punto['lng'],
+                    'precision_m' => $punto['precision_m'] ?? null,
+                    'velocidad_mps' => $punto['velocidad_mps'] ?? null,
+                    'rumbo_grados' => $punto['rumbo_grados'] ?? null,
+                    'fecha_gps' => $punto['fecha_gps'],
+                ]);
+                
+                $puntosGuardados++;
+                
+                // Detectar fuera de ruta (solo cada 3 puntos para no sobrecargar)
+                if ($puntosGuardados % 3 === 0 && $recorrido->ruta) {
+                    $this->detectarFueraDeRuta($recorrido, $punto);
+                }
+            }
+            
+            // Actualizar contador
+            $recorrido->increment('total_puntos', $puntosGuardados);
+            
+            DB::commit();
+            
+            return response()->json([
+                'ok' => true,
+                'guardados' => $puntosGuardados,
+                'total' => $recorrido->total_puntos
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error guardando múltiples puntos: ' . $e->getMessage());
+            
+            return response()->json([
+                'ok' => false,
+                'mensaje' => 'Error interno',
+                'guardados' => $puntosGuardados
+            ], 500);
+        }
+    }
+
+    /**
+     * Método auxiliar para detectar fuera de ruta
+     */
+    private function detectarFueraDeRuta($recorrido, $punto)
+    {
+        if (!$recorrido->ruta || !$recorrido->ruta->geometria_geojson) {
+            return;
+        }
+        
+        $geo = json_decode($recorrido->ruta->geometria_geojson, true);
+        $coords = $geo['coordinates'] ?? [];
+        
+        if (!is_array($coords) || count($coords) < 2) {
+            return;
+        }
+        
+        $line = array_map(fn($c) => [(float)$c[1], (float)$c[0]], $coords);
+        $dist = Geo::pointToPolylineMeters((float)$punto['lat'], (float)$punto['lng'], $line);
+        $tol = (int)($recorrido->ruta->tolerancia_metros ?? 50);
+        
+        if ($dist <= $tol) {
+            return;
+        }
+        
+        // Anti-spam: 1 evento cada 30 segundos
+        $ultimo = EventoRecorrido::where('recorrido_id', $recorrido->id)
+            ->where('tipo', 'fuera_ruta')
+            ->latest('id')
+            ->first();
+        
+        if ($ultimo && $ultimo->fecha_evento->diffInSeconds(now()) < 30) {
+            return;
+        }
+        
+        EventoRecorrido::create([
+            'recorrido_id' => $recorrido->id,
+            'tipo' => 'fuera_ruta',
+            'mensaje' => "Se salió de la ruta (dist: " . round($dist) . " m)",
+            'lat' => $punto['lat'],
+            'lng' => $punto['lng'],
+            'distancia_m' => (int) round($dist),
+            'fecha_evento' => $punto['fecha_gps'],
+        ]);
+        
+        $recorrido->increment('eventos_fuera_ruta');
     }
 }

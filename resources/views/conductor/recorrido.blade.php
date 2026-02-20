@@ -267,23 +267,39 @@
                         </div>
                     @endif
                 </div>
-
                 <!-- Columna derecha - Mapa (ORDEN: Primero en móvil) -->
                 <div class="lg:w-2/3 order-1 lg:order-2">
                     <div class="bg-white rounded-xl shadow-sm sm:shadow-lg p-3 sm:p-4 md:p-6 h-full border border-gray-200 sticky top-4">
+                        <!-- Header del mapa con botones -->
                         <div class="flex justify-between items-center mb-2 sm:mb-3 md:mb-4">
                             <h3 class="text-sm sm:text-base md:text-lg font-semibold text-gray-800 flex items-center">
                                 <i class="fas fa-map mr-2 text-blue-600 text-sm sm:text-base"></i>
                                 Mapa de Ubicación
                             </h3>
-                            @if($recorridoActivo)
-                            <div class="text-xs bg-gray-100 px-2 sm:px-3 py-1 rounded-full flex items-center">
-                                <span id="map-status" class="text-gray-600">Esperando GPS</span>
+                            
+                            <!-- 👇 CONTROLES DEL MAPA (VISIBLE SIEMPRE) -->
+                            <div class="flex items-center gap-2">
+                                <!-- Estado GPS -->
+                                @if($recorridoActivo)
+                                <span id="map-status" class="text-xs bg-gray-100 px-2 sm:px-3 py-1 rounded-full text-gray-600 hidden sm:inline">
+                                    Esperando GPS
+                                </span>
+                                @endif
+                                
+                                <!-- Botón Pantalla Completa -->
+                                <button id="btn_fullscreen" class="text-sm bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors" title="Pantalla completa">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                                
+                                <!-- Botón Centrar -->
+                                <button id="btn_centrar" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors flex items-center gap-1">
+                                    <i class="fas fa-crosshairs"></i>
+                                    <span class="hidden sm:inline">Centrar</span>
+                                </button>
                             </div>
-                            @endif
                         </div>
                         
-                        <!-- Contenedor del mapa con altura responsiva -->
+                        <!-- Contenedor del mapa -->
                         <div id="map" class="w-full h-[350px] sm:h-[400px] md:h-[500px] lg:h-[550px] rounded-lg border border-gray-300"></div>
                         
                         @if(!$recorridoActivo)
@@ -301,6 +317,7 @@
                         @endif
                     </div>
                 </div>
+                
             </div>
         </div>
     </div>
@@ -419,10 +436,11 @@
                             
                             // Ajustar vista si hay puntos
                             const bounds = rutaPlanificadaLayer.getBounds();
-                            if (bounds.isValid()) {
-                                mapConductor.fitBounds(bounds, { 
-                                    padding: isMobile ? [30, 30] : [50, 50] 
-                                });
+                            // ✅ CENTRAR SIN ALEJAR
+                            if (bounds.isValid() && !window.vistaInicializada) {
+                                const center = bounds.getCenter();
+                                mapConductor.setView(center, isMobile ? 15 : 14);
+                                window.vistaInicializada = true;
                             }
                             
                             recorridoRealLayer = L.layerGroup().addTo(mapConductor);
@@ -472,10 +490,11 @@
                     markerConductor.setLatLng([lat, lng]);
                 }
                 
-                // Centrar mapa en móvil solo al inicio
-                if (puntosRecorrido.length === 1) {
+                // ✅ CENTRAR SOLO LA PRIMERA VEZ
+                if (puntosRecorrido.length === 1 && !window.vistaInicializada) {
                     mapConductor.setView([lat, lng], isMobile ? 15 : 16);
-                }
+                    window.vistaInicializada = true;
+                }       
                 
                 if (ultimaUbicacion) {
                     ultimaUbicacion.textContent = lat.toFixed(4) + ', ' + lng.toFixed(4);
@@ -598,6 +617,7 @@
 
             // Inicializar mapa
             initMapConductor();
+            window.vistaInicializada = false; // Agrega esto después de las variables
             @endif
 
             // Prevenir zoom con dos dedos en móvil
@@ -606,6 +626,54 @@
                     if (e.touches.length > 1) e.preventDefault();
                 }, { passive: false });
             }
+            // Función para pantalla completa
+function toggleFullscreen() {
+    const mapContainer = document.getElementById('map');
+    
+    if (!document.fullscreenElement) {
+        // Entrar en pantalla completa
+        if (mapContainer.requestFullscreen) {
+            mapContainer.requestFullscreen();
+        } else if (mapContainer.webkitRequestFullscreen) { /* Safari */
+            mapContainer.webkitRequestFullscreen();
+        } else if (mapContainer.msRequestFullscreen) { /* IE11 */
+            mapContainer.msRequestFullscreen();
+        }
+        document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-compress"></i>';
+    } else {
+        // Salir de pantalla completa
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+            document.msExitFullscreen();
+        }
+        document.getElementById('btn_fullscreen').innerHTML = '<i class="fas fa-expand"></i>';
+    }
+}
+
+// Evento del botón de pantalla completa
+const btnFullscreen = document.getElementById('btn_fullscreen');
+if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', toggleFullscreen);
+}
+
+// Detectar cambio de pantalla completa para actualizar el ícono
+document.addEventListener('fullscreenchange', updateFullscreenIcon);
+document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+document.addEventListener('msfullscreenchange', updateFullscreenIcon);
+
+function updateFullscreenIcon() {
+    const btn = document.getElementById('btn_fullscreen');
+    if (btn) {
+        if (document.fullscreenElement) {
+            btn.innerHTML = '<i class="fas fa-compress"></i>';
+        } else {
+            btn.innerHTML = '<i class="fas fa-expand"></i>';
+        }
+    }
+}
         });
     </script>
 

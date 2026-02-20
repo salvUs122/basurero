@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use App\Models\Ruta;
+use App\Models\User;
 use App\Models\Recorrido;
-use App\Models\HorarioDia; // NUEVO
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Camion extends Model
@@ -17,7 +18,21 @@ class Camion extends Model
         'placa',
         'codigo',
         'estado',
+        'conductor_id',  // ✅ NUEVO CAMPO
     ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
+     * Relación con el conductor asignado
+     */
+    public function conductorAsignado(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'conductor_id');
+    }
 
     /**
      * Relación con Rutas (muchos a muchos)
@@ -38,48 +53,42 @@ class Camion extends Model
     }
 
     /**
-     * Helper para obtener horarios por día USANDO LA NUEVA TABLA
+     * Obtener las rutas activas para HOY
      */
-    public function getHorariosPorDia($rutaId): array
+    public function getRutasActivasHoy()
     {
-        $asignacion = $this->rutas()->where('rutas.id', $rutaId)->first();
+        $diaHoy = strtolower(now()->locale('es')->dayName);
         
-        if (!$asignacion) {
-            return [];
-        }
-
-        // Obtener horarios de la nueva tabla
-        $horarios = HorarioDia::where('ruta_camion_id', $asignacion->pivot->id)
+        return $this->rutas()
+            ->wherePivot('activa', true)
             ->get()
-            ->keyBy('dia')
-            ->toArray();
-
-        return $horarios;
+            ->filter(function($ruta) use ($diaHoy) {
+                $dias = json_decode($ruta->pivot->dias_semana ?? '[]', true);
+                return in_array($diaHoy, $dias);
+            });
     }
 
     /**
-     * Helper para obtener el horario de un día específico
+     * Obtener horario para hoy
      */
-    public function getHorarioDia($rutaId, $dia): ?array
+    public function getHorarioHoy($rutaId)
     {
-        $asignacion = $this->rutas()->where('rutas.id', $rutaId)->first();
+        $ruta = $this->rutas()->where('rutas.id', $rutaId)->first();
         
-        if (!$asignacion) {
+        if (!$ruta) {
             return null;
         }
 
-        $horario = HorarioDia::where('ruta_camion_id', $asignacion->pivot->id)
-            ->where('dia', $dia)
-            ->first();
-
-        if ($horario) {
-            return [
-                'hora_inicio' => $horario->hora_inicio,
-                'hora_fin' => $horario->hora_fin,
-                'activo' => $horario->activo
-            ];
+        $diaHoy = strtolower(now()->locale('es')->dayName);
+        $dias = json_decode($ruta->pivot->dias_semana ?? '[]', true);
+        
+        if (!in_array($diaHoy, $dias)) {
+            return null;
         }
 
-        return null;
+        return [
+            'inicio' => $ruta->pivot->hora_inicio,
+            'fin' => $ruta->pivot->hora_fin,
+        ];
     }
 }
